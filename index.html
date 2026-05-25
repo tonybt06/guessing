@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <meta name="theme-color" content="#6b4ce6">
+  <title>Guess It!</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+
+    :root {
+      --bg: #f0e8ff;
+      --card: #ffffff;
+      --primary: #6b4ce6;
+      --primary-dark: #5538c9;
+      --correct: #2ecc71;
+      --wrong: #ff6b6b;
+      --text: #2d2a3e;
+      --muted: #6b6880;
+      --shadow: 0 8px 24px rgba(107, 76, 230, 0.18);
+      --radius: 20px;
+      --tap: 56px;
+    }
+
+    html {
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100dvh;
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      background: linear-gradient(165deg, #f0e8ff 0%, #ffe8f5 50%, #e8f4ff 100%);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: max(12px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom));
+      overflow-x: hidden;
+    }
+
+    h1 {
+      margin: 8px 0 4px;
+      font-size: clamp(1.6rem, 6vw, 2rem);
+      text-align: center;
+      color: var(--primary);
+    }
+
+    .subtitle {
+      margin: 0 0 16px;
+      font-size: 1rem;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .stars {
+      display: flex;
+      gap: 6px;
+      justify-content: center;
+      margin-bottom: 12px;
+      font-size: 1.5rem;
+      min-height: 1.75rem;
+    }
+
+    .star { opacity: 0.25; transition: transform 0.3s, opacity 0.3s; }
+    .star.filled { opacity: 1; transform: scale(1.15); }
+
+    main {
+      width: 100%;
+      max-width: 420px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .screen {
+      display: none;
+      flex-direction: column;
+      flex: 1;
+      animation: fadeIn 0.35s ease;
+    }
+
+    .screen.active { display: flex; }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .card {
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 24px 20px;
+      text-align: center;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 16px;
+    }
+
+    .clue-text {
+      font-size: clamp(1.25rem, 5vw, 1.5rem);
+      font-weight: 600;
+      line-height: 1.4;
+      margin: 0;
+    }
+
+    .round-label {
+      font-size: 0.9rem;
+      color: var(--muted);
+      margin: 0;
+    }
+
+    .choices {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-top: 8px;
+    }
+
+    .choice {
+      min-height: var(--tap);
+      padding: 14px 10px;
+      border: 3px solid #e8e4f5;
+      border-radius: 16px;
+      background: #faf9ff;
+      font-size: clamp(1rem, 4vw, 1.1rem);
+      font-weight: 700;
+      color: var(--text);
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      transition: transform 0.15s, border-color 0.15s, background 0.15s;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    .choice:active:not(:disabled) { transform: scale(0.96); }
+
+    .choice .emoji { font-size: 2rem; line-height: 1; }
+
+    .choice:disabled { cursor: default; opacity: 0.85; }
+
+    .choice.correct {
+      border-color: var(--correct);
+      background: #e8faf0;
+      animation: pop 0.4s ease;
+    }
+
+    .choice.wrong {
+      border-color: var(--wrong);
+      background: #fff0f0;
+      animation: shake 0.45s ease;
+    }
+
+    @keyframes pop {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.06); }
+    }
+
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-6px); }
+      75% { transform: translateX(6px); }
+    }
+
+    .feedback {
+      min-height: 2.5rem;
+      font-size: 1.2rem;
+      font-weight: 700;
+      margin: 0;
+    }
+
+    .feedback.happy { color: var(--correct); }
+    .feedback.try-again { color: var(--wrong); }
+
+    .btn {
+      min-height: var(--tap);
+      width: 100%;
+      max-width: 320px;
+      margin: 0 auto;
+      padding: 16px 24px;
+      border: none;
+      border-radius: 16px;
+      background: var(--primary);
+      color: #fff;
+      font-size: 1.25rem;
+      font-weight: 800;
+      cursor: pointer;
+      box-shadow: 0 6px 0 var(--primary-dark);
+      transition: transform 0.1s, box-shadow 0.1s;
+      align-self: center;
+    }
+
+    .btn:active {
+      transform: translateY(4px);
+      box-shadow: 0 2px 0 var(--primary-dark);
+    }
+
+    .btn-secondary {
+      background: #ff85a2;
+      box-shadow: 0 6px 0 #e06685;
+    }
+
+    .btn-secondary:active { box-shadow: 0 2px 0 #e06685; }
+
+    .celebration {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      overflow: hidden;
+      z-index: 10;
+    }
+
+    .confetti {
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      border-radius: 2px;
+      animation: fall 1.2s ease forwards;
+    }
+
+    @keyframes fall {
+      to {
+        transform: translateY(100vh) rotate(720deg);
+        opacity: 0;
+      }
+    }
+
+    .end-emoji {
+      font-size: 4rem;
+      margin: 0;
+    }
+
+    .end-message {
+      font-size: 1.3rem;
+      font-weight: 700;
+      margin: 0;
+    }
+
+    .mascot {
+      font-size: 4rem;
+      margin: 0;
+      animation: bounce 1.5s ease infinite;
+    }
+
+    @keyframes bounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .screen, .choice, .mascot, .confetti { animation: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <h1>Guess It!</h1>
+  <p class="subtitle">Read the clue, then tap your guess</p>
+  <div class="stars" id="stars" aria-hidden="true"></div>
+
+  <main>
+    <section class="screen active" id="start-screen">
+      <div class="card">
+        <p class="mascot" aria-hidden="true">🦊</p>
+        <p class="clue-text">Hi friend! Can you guess what I'm thinking of?</p>
+        <p class="round-label">5 rounds · no picture hints · you can try again!</p>
+      </div>
+      <button type="button" class="btn" id="start-btn">Let's Play!</button>
+    </section>
+
+    <section class="screen" id="game-screen">
+      <div class="card">
+        <p class="round-label" id="round-label">Round 1 of 5</p>
+        <p class="clue-text" id="clue-text"></p>
+        <div class="choices" id="choices" role="group" aria-label="Pick your guess"></div>
+        <p class="feedback" id="feedback" aria-live="polite"></p>
+      </div>
+      <button type="button" class="btn" id="next-btn" style="display: none;">Next!</button>
+    </section>
+
+    <section class="screen" id="end-screen">
+      <div class="card">
+        <p class="end-emoji" id="end-emoji" aria-hidden="true">🎉</p>
+        <p class="end-message" id="end-message"></p>
+        <p class="round-label" id="end-score"></p>
+      </div>
+      <button type="button" class="btn btn-secondary" id="replay-btn">Play Again!</button>
+    </section>
+  </main>
+
+  <div class="celebration" id="celebration" aria-hidden="true"></div>
+
+  <script>
+    const ROUNDS = 5;
+
+    const puzzles = [
+      { clue: "I say meow and love to nap.", answer: "cat", choices: [
+        { id: "cat", emoji: "🐱", label: "Cat" },
+        { id: "dog", emoji: "🐶", label: "Dog" },
+        { id: "fish", emoji: "🐟", label: "Fish" },
+        { id: "bird", emoji: "🐦", label: "Bird" }
+      ]},
+      { clue: "I am red and crunchy. Doctors like me!", answer: "apple", choices: [
+        { id: "banana", emoji: "🍌", label: "Banana" },
+        { id: "apple", emoji: "🍎", label: "Apple" },
+        { id: "grape", emoji: "🍇", label: "Grapes" },
+        { id: "carrot", emoji: "🥕", label: "Carrot" }
+      ]},
+      { clue: "I shine in the sky during the day.", answer: "sun", choices: [
+        { id: "moon", emoji: "🌙", label: "Moon" },
+        { id: "star", emoji: "⭐", label: "Star" },
+        { id: "sun", emoji: "☀️", label: "Sun" },
+        { id: "cloud", emoji: "☁️", label: "Cloud" }
+      ]},
+      { clue: "I'm red and help put out fires.", answer: "fire truck", choices: [
+        { id: "bus", emoji: "🚌", label: "Bus" },
+        { id: "car", emoji: "🚗", label: "Car" },
+        { id: "fire truck", emoji: "🚒", label: "Fire Truck" },
+        { id: "bike", emoji: "🚲", label: "Bike" }
+      ]},
+      { clue: "I start as a caterpillar and have colorful wings.", answer: "butterfly", choices: [
+        { id: "bee", emoji: "🐝", label: "Bee" },
+        { id: "ladybug", emoji: "🐞", label: "Ladybug" },
+        { id: "butterfly", emoji: "🦋", label: "Butterfly" },
+        { id: "snail", emoji: "🐌", label: "Snail" }
+      ]},
+      { clue: "I have many colors after it rains.", answer: "rainbow", choices: [
+        { id: "rainbow", emoji: "🌈", label: "Rainbow" },
+        { id: "tree", emoji: "🌳", label: "Tree" },
+        { id: "flower", emoji: "🌸", label: "Flower" },
+        { id: "rock", emoji: "🪨", label: "Rock" }
+      ]},
+      { clue: "I'm very big with a long trunk.", answer: "elephant", choices: [
+        { id: "lion", emoji: "🦁", label: "Lion" },
+        { id: "elephant", emoji: "🐘", label: "Elephant" },
+        { id: "giraffe", emoji: "🦒", label: "Giraffe" },
+        { id: "zebra", emoji: "🦓", label: "Zebra" }
+      ]},
+      { clue: "I'm soft and cuddly. You can hug me at bedtime.", answer: "teddy bear", choices: [
+        { id: "ball", emoji: "⚽", label: "Ball" },
+        { id: "book", emoji: "📚", label: "Book" },
+        { id: "teddy bear", emoji: "🧸", label: "Teddy Bear" },
+        { id: "block", emoji: "🧱", label: "Blocks" }
+      ]},
+      { clue: "I'm a yummy circle with cheese on top.", answer: "pizza", choices: [
+        { id: "cookie", emoji: "🍪", label: "Cookie" },
+        { id: "ice cream", emoji: "🍦", label: "Ice Cream" },
+        { id: "pizza", emoji: "🍕", label: "Pizza" },
+        { id: "sandwich", emoji: "🥪", label: "Sandwich" }
+      ]},
+      { clue: "I'm green and go ribbit ribbit!", answer: "frog", choices: [
+        { id: "duck", emoji: "🦆", label: "Duck" },
+        { id: "turtle", emoji: "🐢", label: "Turtle" },
+        { id: "frog", emoji: "🐸", label: "Frog" },
+        { id: "rabbit", emoji: "🐰", label: "Bunny" }
+      ]}
+    ];
+
+    const happyMessages = [
+      "Yay! You got it!",
+      "Super star!",
+      "That's right!",
+      "Amazing guess!",
+      "High five!"
+    ];
+
+    const tryMessages = [
+      "Oops! Try again!",
+      "Almost! Pick another one.",
+      "Not quite — you can do it!"
+    ];
+
+    let round = 0;
+    let stars = 0;
+    let currentPuzzle = null;
+    let answered = false;
+
+    const startScreen = document.getElementById("start-screen");
+    const gameScreen = document.getElementById("game-screen");
+    const endScreen = document.getElementById("end-screen");
+    const starsEl = document.getElementById("stars");
+    const roundLabel = document.getElementById("round-label");
+    const clueText = document.getElementById("clue-text");
+    const choicesEl = document.getElementById("choices");
+    const feedbackEl = document.getElementById("feedback");
+    const nextBtn = document.getElementById("next-btn");
+    const celebrationEl = document.getElementById("celebration");
+    const endMessage = document.getElementById("end-message");
+    const endScore = document.getElementById("end-score");
+    const endEmoji = document.getElementById("end-emoji");
+
+    function shuffle(arr) {
+      const a = [...arr];
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    }
+
+    function pickRounds() {
+      return shuffle(puzzles).slice(0, ROUNDS);
+    }
+
+    let gameRounds = pickRounds();
+
+    function showScreen(screen) {
+      [startScreen, gameScreen, endScreen].forEach(s => s.classList.remove("active"));
+      screen.classList.add("active");
+    }
+
+    function renderStars() {
+      starsEl.innerHTML = "";
+      for (let i = 0; i < ROUNDS; i++) {
+        const span = document.createElement("span");
+        span.className = "star" + (i < stars ? " filled" : "");
+        span.textContent = "⭐";
+        starsEl.appendChild(span);
+      }
+    }
+
+    function confetti() {
+      const colors = ["#6b4ce6", "#ff85a2", "#2ecc71", "#ffd93d", "#4ecdc4"];
+      for (let i = 0; i < 24; i++) {
+        const bit = document.createElement("div");
+        bit.className = "confetti";
+        bit.style.left = Math.random() * 100 + "%";
+        bit.style.top = "-10px";
+        bit.style.background = colors[Math.floor(Math.random() * colors.length)];
+        bit.style.animationDelay = Math.random() * 0.3 + "s";
+        celebrationEl.appendChild(bit);
+        setTimeout(() => bit.remove(), 1400);
+      }
+    }
+
+    function loadRound() {
+      answered = false;
+      currentPuzzle = gameRounds[round];
+      roundLabel.textContent = `Round ${round + 1} of ${ROUNDS}`;
+      clueText.textContent = currentPuzzle.clue;
+      feedbackEl.textContent = "";
+      feedbackEl.className = "feedback";
+      nextBtn.style.display = "none";
+
+      const shuffled = shuffle(currentPuzzle.choices);
+      choicesEl.innerHTML = "";
+
+      shuffled.forEach(choice => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "choice";
+        btn.dataset.id = choice.id;
+        btn.innerHTML = `<span class="emoji" aria-hidden="true">${choice.emoji}</span><span>${choice.label}</span>`;
+        btn.addEventListener("click", () => onGuess(btn, choice.id));
+        choicesEl.appendChild(btn);
+      });
+    }
+
+    function onGuess(btn, id) {
+      if (answered) return;
+
+      const correct = id === currentPuzzle.answer;
+      const buttons = choicesEl.querySelectorAll(".choice");
+
+      if (correct) {
+        answered = true;
+        btn.classList.add("correct");
+        buttons.forEach(b => { b.disabled = true; });
+        stars++;
+        renderStars();
+        feedbackEl.textContent = happyMessages[Math.floor(Math.random() * happyMessages.length)];
+        feedbackEl.className = "feedback happy";
+        confetti();
+        nextBtn.style.display = "block";
+        if (round === ROUNDS - 1) {
+          nextBtn.textContent = "See My Stars!";
+        } else {
+          nextBtn.textContent = "Next!";
+        }
+      } else {
+        btn.classList.add("wrong");
+        btn.disabled = true;
+        feedbackEl.textContent = tryMessages[Math.floor(Math.random() * tryMessages.length)];
+        feedbackEl.className = "feedback try-again";
+        setTimeout(() => btn.classList.remove("wrong"), 500);
+      }
+    }
+
+    function startGame() {
+      round = 0;
+      stars = 0;
+      gameRounds = pickRounds();
+      renderStars();
+      showScreen(gameScreen);
+      loadRound();
+    }
+
+    function endGame() {
+      showScreen(endScreen);
+      if (stars === ROUNDS) {
+        endEmoji.textContent = "🏆";
+        endMessage.textContent = "Wow! You got them all!";
+      } else if (stars >= 3) {
+        endEmoji.textContent = "🌟";
+        endMessage.textContent = "Great job, superstar!";
+      } else {
+        endEmoji.textContent = "🎈";
+        endMessage.textContent = "Nice playing! Want to try again?";
+      }
+      endScore.textContent = `You earned ${stars} out of ${ROUNDS} stars!`;
+    }
+
+    document.getElementById("start-btn").addEventListener("click", startGame);
+    document.getElementById("replay-btn").addEventListener("click", startGame);
+    nextBtn.addEventListener("click", () => {
+      round++;
+      if (round >= ROUNDS) {
+        endGame();
+      } else {
+        loadRound();
+      }
+    });
+
+    renderStars();
+  </script>
+</body>
+</html>
