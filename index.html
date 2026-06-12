@@ -117,13 +117,13 @@
     .choices {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 12px;
+      gap: 10px;
       margin-top: 8px;
     }
 
     .choice {
-      min-height: var(--tap);
-      padding: 14px 10px;
+      min-height: 52px;
+      padding: 12px 10px;
       border: 3px solid #e8e4f5;
       border-radius: 16px;
       background: #faf9ff;
@@ -143,9 +143,12 @@
 
     .choice:active:not(:disabled) { transform: scale(0.96); }
 
-    .choice .emoji { font-size: 2rem; line-height: 1; }
-
     .choice:disabled { cursor: default; opacity: 0.85; }
+
+    .choice.reveal {
+      border-color: var(--correct);
+      background: #e8faf0;
+    }
 
     .choice.correct {
       border-color: var(--correct);
@@ -262,15 +265,15 @@
 </head>
 <body>
   <h1>Guess It!</h1>
-  <p class="subtitle">Read the clue, then tap your guess</p>
+  <p class="subtitle">Solve the riddle — two guesses per round!</p>
   <div class="stars" id="stars" aria-hidden="true"></div>
 
   <main>
     <section class="screen active" id="start-screen">
       <div class="card">
         <p class="mascot" aria-hidden="true">🦊</p>
-        <p class="clue-text">Hi friend! Can you guess what I'm thinking of?</p>
-        <p class="round-label">5 rounds · no picture hints · you can try again!</p>
+        <p class="clue-text">Think you can crack these riddles?</p>
+        <p class="round-label">8 rounds · 6 choices each · only 2 guesses per round</p>
       </div>
       <button type="button" class="btn" id="start-btn">Let's Play!</button>
     </section>
@@ -298,89 +301,151 @@
   <div class="celebration" id="celebration" aria-hidden="true"></div>
 
   <script>
-    const ROUNDS = 5;
+    const ROUNDS = 8;
+    const GUESSES_PER_ROUND = 2;
 
     const puzzles = [
-      { clue: "I say meow and love to nap.", answer: "cat", choices: [
-        { id: "cat", emoji: "🐱", label: "Cat" },
-        { id: "dog", emoji: "🐶", label: "Dog" },
-        { id: "fish", emoji: "🐟", label: "Fish" },
-        { id: "bird", emoji: "🐦", label: "Bird" }
+      { clue: "I have keys but no locks. I have space but no room. You can enter, but you can't go inside.", answer: "keyboard", choices: [
+        { id: "keyboard", label: "Keyboard" },
+        { id: "piano", label: "Piano" },
+        { id: "safe", label: "Safe" },
+        { id: "typewriter", label: "Typewriter" },
+        { id: "calculator", label: "Calculator" },
+        { id: "door", label: "Door" }
       ]},
-      { clue: "I am red and crunchy. Doctors like me!", answer: "apple", choices: [
-        { id: "banana", emoji: "🍌", label: "Banana" },
-        { id: "apple", emoji: "🍎", label: "Apple" },
-        { id: "grape", emoji: "🍇", label: "Grapes" },
-        { id: "carrot", emoji: "🥕", label: "Carrot" }
+      { clue: "The more you take, the more you leave behind. What am I?", answer: "footsteps", choices: [
+        { id: "footsteps", label: "Footsteps" },
+        { id: "shadow", label: "Shadow" },
+        { id: "time", label: "Time" },
+        { id: "memories", label: "Memories" },
+        { id: "breath", label: "Breath" },
+        { id: "sand", label: "Sand" }
       ]},
-      { clue: "I shine in the sky during the day.", answer: "sun", choices: [
-        { id: "moon", emoji: "🌙", label: "Moon" },
-        { id: "star", emoji: "⭐", label: "Star" },
-        { id: "sun", emoji: "☀️", label: "Sun" },
-        { id: "cloud", emoji: "☁️", label: "Cloud" }
+      { clue: "I speak without a mouth and hear without ears. I have no body, but I come alive with the wind.", answer: "echo", choices: [
+        { id: "echo", label: "Echo" },
+        { id: "whisper", label: "Whisper" },
+        { id: "radio", label: "Radio" },
+        { id: "ghost", label: "Ghost" },
+        { id: "thunder", label: "Thunder" },
+        { id: "mirror", label: "Mirror" }
       ]},
-      { clue: "I'm red and help put out fires.", answer: "fire truck", choices: [
-        { id: "bus", emoji: "🚌", label: "Bus" },
-        { id: "car", emoji: "🚗", label: "Car" },
-        { id: "fire truck", emoji: "🚒", label: "Fire Truck" },
-        { id: "bike", emoji: "🚲", label: "Bike" }
+      { clue: "I'm always coming but never arrive. Today keeps chasing me, but I'm never here yet.", answer: "tomorrow", choices: [
+        { id: "tomorrow", label: "Tomorrow" },
+        { id: "future", label: "The Future" },
+        { id: "dream", label: "A Dream" },
+        { id: "sunrise", label: "Sunrise" },
+        { id: "hope", label: "Hope" },
+        { id: "luck", label: "Luck" }
       ]},
-      { clue: "I start as a caterpillar and have colorful wings.", answer: "butterfly", choices: [
-        { id: "bee", emoji: "🐝", label: "Bee" },
-        { id: "ladybug", emoji: "🐞", label: "Ladybug" },
-        { id: "butterfly", emoji: "🦋", label: "Butterfly" },
-        { id: "snail", emoji: "🐌", label: "Snail" }
+      { clue: "I have cities, but no houses. I have mountains, but no trees. I have water, but no fish.", answer: "map", choices: [
+        { id: "map", label: "Map" },
+        { id: "globe", label: "Globe" },
+        { id: "painting", label: "Painting" },
+        { id: "puzzle", label: "Puzzle" },
+        { id: "atlas", label: "Atlas" },
+        { id: "postcard", label: "Postcard" }
       ]},
-      { clue: "I have many colors after it rains.", answer: "rainbow", choices: [
-        { id: "rainbow", emoji: "🌈", label: "Rainbow" },
-        { id: "tree", emoji: "🌳", label: "Tree" },
-        { id: "flower", emoji: "🌸", label: "Flower" },
-        { id: "rock", emoji: "🪨", label: "Rock" }
+      { clue: "I'm tall when I'm young and short when I'm old. What am I?", answer: "candle", choices: [
+        { id: "candle", label: "Candle" },
+        { id: "tree", label: "Tree" },
+        { id: "person", label: "Person" },
+        { id: "pencil", label: "Pencil" },
+        { id: "hourglass", label: "Hourglass" },
+        { id: "shadow", label: "Shadow" }
       ]},
-      { clue: "I'm very big with a long trunk.", answer: "elephant", choices: [
-        { id: "lion", emoji: "🦁", label: "Lion" },
-        { id: "elephant", emoji: "🐘", label: "Elephant" },
-        { id: "giraffe", emoji: "🦒", label: "Giraffe" },
-        { id: "zebra", emoji: "🦓", label: "Zebra" }
+      { clue: "I have a neck but no head, and I wear a cap. What am I?", answer: "bottle", choices: [
+        { id: "bottle", label: "Bottle" },
+        { id: "guitar", label: "Guitar" },
+        { id: "pen", label: "Pen" },
+        { id: "mushroom", label: "Mushroom" },
+        { id: "vase", label: "Vase" },
+        { id: "lamp", label: "Lamp" }
       ]},
-      { clue: "I'm soft and cuddly. You can hug me at bedtime.", answer: "teddy bear", choices: [
-        { id: "ball", emoji: "⚽", label: "Ball" },
-        { id: "book", emoji: "📚", label: "Book" },
-        { id: "teddy bear", emoji: "🧸", label: "Teddy Bear" },
-        { id: "block", emoji: "🧱", label: "Blocks" }
+      { clue: "I can be cracked, made, told, and played. What am I?", answer: "joke", choices: [
+        { id: "joke", label: "Joke" },
+        { id: "code", label: "Code" },
+        { id: "egg", label: "Egg" },
+        { id: "promise", label: "Promise" },
+        { id: "record", label: "Record" },
+        { id: "secret", label: "Secret" }
       ]},
-      { clue: "I'm a yummy circle with cheese on top.", answer: "pizza", choices: [
-        { id: "cookie", emoji: "🍪", label: "Cookie" },
-        { id: "ice cream", emoji: "🍦", label: "Ice Cream" },
-        { id: "pizza", emoji: "🍕", label: "Pizza" },
-        { id: "sandwich", emoji: "🥪", label: "Sandwich" }
+      { clue: "I go all around the world but never leave my corner. What am I?", answer: "stamp", choices: [
+        { id: "stamp", label: "Stamp" },
+        { id: "compass", label: "Compass" },
+        { id: "satellite", label: "Satellite" },
+        { id: "internet", label: "Internet" },
+        { id: "postcard", label: "Postcard" },
+        { id: "globe", label: "Globe" }
       ]},
-      { clue: "I'm green and go ribbit ribbit!", answer: "frog", choices: [
-        { id: "duck", emoji: "🦆", label: "Duck" },
-        { id: "turtle", emoji: "🐢", label: "Turtle" },
-        { id: "frog", emoji: "🐸", label: "Frog" },
-        { id: "rabbit", emoji: "🐰", label: "Bunny" }
+      { clue: "I'm light as a feather, yet the strongest person can't hold me for more than a few minutes.", answer: "breath", choices: [
+        { id: "breath", label: "Breath" },
+        { id: "thought", label: "Thought" },
+        { id: "smoke", label: "Smoke" },
+        { id: "bubble", label: "Bubble" },
+        { id: "silence", label: "Silence" },
+        { id: "secret", label: "Secret" }
+      ]},
+      { clue: "I have branches but no fruit, trunk, or leaves. What am I?", answer: "bank", choices: [
+        { id: "bank", label: "Bank" },
+        { id: "library", label: "Library" },
+        { id: "family tree", label: "Family Tree" },
+        { id: "river", label: "River" },
+        { id: "company", label: "Company" },
+        { id: "hospital", label: "Hospital" }
+      ]},
+      { clue: "I follow you everywhere, but I'm invisible until the sun comes out.", answer: "shadow", choices: [
+        { id: "shadow", label: "Shadow" },
+        { id: "reflection", label: "Reflection" },
+        { id: "gravity", label: "Gravity" },
+        { id: "echo", label: "Echo" },
+        { id: "conscience", label: "Conscience" },
+        { id: "past", label: "The Past" }
+      ]},
+      { clue: "The person who makes me doesn't want me. The person who buys me doesn't use me. The person who uses me doesn't know it.", answer: "coffin", choices: [
+        { id: "coffin", label: "Coffin" },
+        { id: "gift", label: "Gift" },
+        { id: "medicine", label: "Medicine" },
+        { id: "password", label: "Password" },
+        { id: "lie", label: "Lie" },
+        { id: "test", label: "Test" }
+      ]},
+      { clue: "I'm not alive, but I grow. I don't have lungs, but I need air. I don't have a mouth, but water kills me.", answer: "fire", choices: [
+        { id: "fire", label: "Fire" },
+        { id: "plant", label: "Plant" },
+        { id: "cloud", label: "Cloud" },
+        { id: "ice", label: "Ice" },
+        { id: "rust", label: "Rust" },
+        { id: "candle", label: "Candle" }
+      ]},
+      { clue: "I have hands but can't clap. I have a face but can't smile. What am I?", answer: "clock", choices: [
+        { id: "clock", label: "Clock" },
+        { id: "robot", label: "Robot" },
+        { id: "statue", label: "Statue" },
+        { id: "watch", label: "Watch" },
+        { id: "mannequin", label: "Mannequin" },
+        { id: "mirror", label: "Mirror" }
       ]}
     ];
 
     const happyMessages = [
-      "Yay! You got it!",
-      "Super star!",
-      "That's right!",
-      "Amazing guess!",
-      "High five!"
+      "Nailed it!",
+      "Sharp thinking!",
+      "Correct!",
+      "You cracked it!",
+      "Brain power!"
     ];
 
     const tryMessages = [
-      "Oops! Try again!",
-      "Almost! Pick another one.",
-      "Not quite — you can do it!"
+      "Wrong — one guess left!",
+      "Not that one. Think harder!",
+      "Close, but no. Try again!"
     ];
 
     let round = 0;
     let stars = 0;
     let currentPuzzle = null;
     let answered = false;
+    let guessesLeft = GUESSES_PER_ROUND;
 
     const startScreen = document.getElementById("start-screen");
     const gameScreen = document.getElementById("game-screen");
@@ -440,10 +505,38 @@
       }
     }
 
+    function updateRoundLabel() {
+      roundLabel.textContent = `Round ${round + 1} of ${ROUNDS} · ${guessesLeft} guess${guessesLeft === 1 ? " left" : "es left"}`;
+    }
+
+    function finishRound(won) {
+      answered = true;
+      const buttons = choicesEl.querySelectorAll(".choice");
+      buttons.forEach(b => { b.disabled = true; });
+
+      if (won) {
+        stars++;
+        renderStars();
+        feedbackEl.className = "feedback happy";
+        confetti();
+      } else {
+        buttons.forEach(b => {
+          if (b.dataset.id === currentPuzzle.answer) b.classList.add("reveal");
+        });
+        const answerLabel = currentPuzzle.choices.find(c => c.id === currentPuzzle.answer).label;
+        feedbackEl.textContent = `Out of guesses! It was ${answerLabel}.`;
+        feedbackEl.className = "feedback try-again";
+      }
+
+      nextBtn.style.display = "block";
+      nextBtn.textContent = round === ROUNDS - 1 ? "See My Score!" : "Next Round";
+    }
+
     function loadRound() {
       answered = false;
+      guessesLeft = GUESSES_PER_ROUND;
       currentPuzzle = gameRounds[round];
-      roundLabel.textContent = `Round ${round + 1} of ${ROUNDS}`;
+      updateRoundLabel();
       clueText.textContent = currentPuzzle.clue;
       feedbackEl.textContent = "";
       feedbackEl.className = "feedback";
@@ -457,7 +550,7 @@
         btn.type = "button";
         btn.className = "choice";
         btn.dataset.id = choice.id;
-        btn.innerHTML = `<span class="emoji" aria-hidden="true">${choice.emoji}</span><span>${choice.label}</span>`;
+        btn.textContent = choice.label;
         btn.addEventListener("click", () => onGuess(btn, choice.id));
         choicesEl.appendChild(btn);
       });
@@ -467,29 +560,23 @@
       if (answered) return;
 
       const correct = id === currentPuzzle.answer;
-      const buttons = choicesEl.querySelectorAll(".choice");
 
       if (correct) {
-        answered = true;
         btn.classList.add("correct");
-        buttons.forEach(b => { b.disabled = true; });
-        stars++;
-        renderStars();
         feedbackEl.textContent = happyMessages[Math.floor(Math.random() * happyMessages.length)];
-        feedbackEl.className = "feedback happy";
-        confetti();
-        nextBtn.style.display = "block";
-        if (round === ROUNDS - 1) {
-          nextBtn.textContent = "See My Stars!";
-        } else {
-          nextBtn.textContent = "Next!";
-        }
+        finishRound(true);
       } else {
+        guessesLeft--;
+        updateRoundLabel();
         btn.classList.add("wrong");
         btn.disabled = true;
-        feedbackEl.textContent = tryMessages[Math.floor(Math.random() * tryMessages.length)];
-        feedbackEl.className = "feedback try-again";
-        setTimeout(() => btn.classList.remove("wrong"), 500);
+        if (guessesLeft === 0) {
+          finishRound(false);
+        } else {
+          feedbackEl.textContent = tryMessages[Math.floor(Math.random() * tryMessages.length)];
+          feedbackEl.className = "feedback try-again";
+          setTimeout(() => btn.classList.remove("wrong"), 500);
+        }
       }
     }
 
@@ -504,17 +591,21 @@
 
     function endGame() {
       showScreen(endScreen);
+      const pct = stars / ROUNDS;
       if (stars === ROUNDS) {
         endEmoji.textContent = "🏆";
-        endMessage.textContent = "Wow! You got them all!";
-      } else if (stars >= 3) {
+        endMessage.textContent = "Perfect score — riddle master!";
+      } else if (pct >= 0.75) {
         endEmoji.textContent = "🌟";
-        endMessage.textContent = "Great job, superstar!";
+        endMessage.textContent = "Impressive! You crushed most of them.";
+      } else if (pct >= 0.5) {
+        endEmoji.textContent = "🧠";
+        endMessage.textContent = "Solid effort. Ready for another round?";
       } else {
-        endEmoji.textContent = "🎈";
-        endMessage.textContent = "Nice playing! Want to try again?";
+        endEmoji.textContent = "💪";
+        endMessage.textContent = "Tough set! Study the clues and try again.";
       }
-      endScore.textContent = `You earned ${stars} out of ${ROUNDS} stars!`;
+      endScore.textContent = `You solved ${stars} out of ${ROUNDS} riddles!`;
     }
 
     document.getElementById("start-btn").addEventListener("click", startGame);
